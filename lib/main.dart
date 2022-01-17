@@ -1,4 +1,7 @@
+import 'dart:ffi';
+import 'quiz_brain.dart';
 import 'package:flutter/material.dart';
+import 'package:rflutter_alert/rflutter_alert.dart';
 
 void main() => runApp(Quizzler());
 
@@ -6,6 +9,7 @@ class Quizzler extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
         backgroundColor: Colors.grey.shade900,
         body: SafeArea(
@@ -25,12 +29,60 @@ class QuizPage extends StatefulWidget {
 }
 
 class _QuizPageState extends State<QuizPage> {
-  List<Icon> icons = [
-    Icon(Icons.check, color: Colors.green),
-    Icon(Icons.close, color: Colors.red),
-    Icon(Icons.close, color: Colors.red),
-    Icon(Icons.close, color: Colors.red)
-  ];
+  List<Icon> icons = [];
+  QuizBrain quizBrain = new QuizBrain();
+  int correctAns = 0;
+
+  String getScore() {
+    int totalQues = quizBrain.getTotalQuestions();
+    return '$correctAns/$totalQues';
+  }
+
+  void checkAnswer(bool userPickedAnswer) {
+    if (quizBrain.isFinished()) {
+      bool corrAns = quizBrain.getQuestionAnswer();
+      if (userPickedAnswer == corrAns) {
+        icons.add(new Icon(Icons.check, color: Colors.green));
+        correctAns++;
+      } else {
+        icons.add(new Icon(Icons.close, color: Colors.red));
+      }
+      String res = getScore();
+      Alert(
+        context: context,
+        closeIcon: Icon(Icons.close),
+        title: "Finished!",
+        desc: "You have reached the end of the Quiz\n Your Score: $res ",
+        buttons: [
+          DialogButton(
+            child: Text(
+              "Okay",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            onPressed: () => Navigator.pop(context),
+            width: 120,
+          )
+        ],
+      ).show();
+      setState(() {
+        icons.clear();
+        quizBrain.reset();
+        correctAns = 0;
+      });
+    } else {
+      bool corrAns = quizBrain.getQuestionAnswer();
+
+      setState(() {
+        if (userPickedAnswer == corrAns) {
+          icons.add(new Icon(Icons.check, color: Colors.green));
+          correctAns++;
+        } else {
+          icons.add(new Icon(Icons.close, color: Colors.red));
+        }
+        quizBrain.nextQuestion();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +96,7 @@ class _QuizPageState extends State<QuizPage> {
             padding: EdgeInsets.all(10.0),
             child: Center(
               child: Text(
-                'This is where the question text will go.',
+                quizBrain.getQuestionText(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 25.0,
@@ -70,9 +122,7 @@ class _QuizPageState extends State<QuizPage> {
               ),
               onPressed: () {
                 //The user picked true.
-                setState(() {
-                  icons.add(new Icon(Icons.check, color: Colors.green));
-                });
+                checkAnswer(true);
               },
             ),
           ),
@@ -81,20 +131,17 @@ class _QuizPageState extends State<QuizPage> {
           child: Padding(
             padding: EdgeInsets.all(15.0),
             child: TextButton(
-              style: TextButton.styleFrom(backgroundColor: Colors.red),
-              child: Text(
-                'False',
-                style: TextStyle(
-                  fontSize: 20.0,
-                  color: Colors.white,
+                style: TextButton.styleFrom(backgroundColor: Colors.red),
+                child: Text(
+                  'False',
+                  style: TextStyle(
+                    fontSize: 20.0,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              onPressed: () {
-                setState(() {
-                  icons.removeLast();
-                });
-              },
-            ),
+                onPressed: () {
+                  checkAnswer(false);
+                }),
           ),
         ),
         Row(
@@ -104,9 +151,3 @@ class _QuizPageState extends State<QuizPage> {
     );
   }
 }
-
-/*
-question1: 'You can lead a cow down stairs but not up stairs.', false,
-question2: 'Approximately one quarter of human bones are in the feet.', true,
-question3: 'A slug\'s blood is green.', true,
-*/
